@@ -2,6 +2,11 @@ import tkinter
 import argparse
 import os
 
+def package_file(file_path):
+    if not file_path.endswith('.pkg.tar.zst'):
+        raise argparse.ArgumentTypeError('Package file must be in .pkg.tar.zst format')
+    return file_path
+
 # Define command-line arguments
 parser = argparse.ArgumentParser()
 
@@ -11,10 +16,10 @@ parser.add_argument('-a', '--admin', action='store_true', help='Activate admin m
 # Add command argument and sub-commands
 subparsers = parser.add_subparsers(title='commands', dest='command')
 
+add_parser = subparsers.add_parser('add', help='Add a new package')
+add_parser.add_argument('package', type=package_file, help='Package file to add')
 
-# Add "add" sub-command
-add_parser = subparsers.add_parser('add', help='Add a new item')
-add_parser.add_argument('item', help='Item to add')
+
 
 # Add "del" sub-command
 del_parser = subparsers.add_parser('del', help='Delete an item')
@@ -38,7 +43,7 @@ else:
 
 # Perform the requested command
 if args.command == 'add':
-    print(f'Adding {args.item}...')
+    print(f'Adding {args.package}...')
 elif args.command == 'del':
     print(f'Deleting {args.item}...')
 elif args.command == 'update':
