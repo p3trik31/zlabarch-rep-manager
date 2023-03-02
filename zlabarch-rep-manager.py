@@ -5,24 +5,31 @@ import os
 import getpass
 import base64
 
-REPO_FILE_PATH = '/etc/zlabarch-rep-manager/repo.txt'
+REPO_FILE_PATH = '/pokus/zlarch-repo'
 PASSWORD_FILE_PATH = '/etc/zlabarch-rep-manager/admin_password.txt'
 
 
 
+def list_pkg_files(path):
+    pkg_files = []
+    for filename in os.listdir(path):
+        if filename.endswith(".pkg.tar.zst"):
+            base_filename = os.path.splitext(filename)[0]
+            pkg_files.append(base_filename)
+    return pkg_files
 
 def create_gui():
     gui = True
     
     #hlavni okno
     window = tk.Tk()
-    window.title("Package Manager")
+    window.title("Zlabarch-rep-manager")
     
-    # create top panel
+    # top panel
     top_panel = tk.Frame(window, bg="#263238", height=50)
     top_panel.pack(side="top", fill="x")
     
-    
+    #rozpoznani ve kterem modu je aplikace spustena
     if args.admin:
         admin_mode_label = ttk.Label(top_panel, text="Admin", background="#263238", foreground="white", font=("Helvetica", 16, "bold"))
         admin_mode_label.pack(side="left", padx=20, pady=10)
@@ -40,21 +47,26 @@ def create_gui():
     settings_dropdown.pack(side="right", padx=10, pady=10)
         
     
-    # create middle panel
+    # middle panel
     middle_panel = tk.Frame(window, bg="#CFD8DC")
     middle_panel.pack(side="top", fill="both", expand=True)
     
-    # create unchecked packages listbox
+    # listbox pro unchecked 
     unchecked_label = tk.Label(middle_panel, text="Unchecked Packages", font=("Helvetica", 12, "bold"), bg="#CFD8DC")
     unchecked_label.pack(side="left", padx=10, pady=10)
     unchecked_listbox = tk.Listbox(middle_panel, selectmode="multiple", bg="white", fg="#263238", font=("Helvetica", 12))
     unchecked_listbox.pack(side="left", fill="both", expand=True, padx=10, pady=10)
     
-    # create packages listbox
+    # listbox pro balicky
     packages_label = tk.Label(middle_panel, text="Packages", font=("Helvetica", 12, "bold"), bg="#CFD8DC")
     packages_label.pack(side="left", padx=10, pady=10)
     packages_listbox = tk.Listbox(middle_panel, selectmode="multiple", bg="white", fg="#263238", font=("Helvetica", 12))
     packages_listbox.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+    
+    pkg_files = list_pkg_files(REPO_FILE_PATH)
+    for filename in pkg_files:
+        packages_listbox.insert(tk.END, filename)
+    
     
     # button panel pro hlavni akce
     button_panel = tk.Frame(window, bg="#263238", height=50)
@@ -65,7 +77,6 @@ def create_gui():
     del_button.pack(side="left", padx=10, pady=10)
     update_button = tk.Button(button_panel, text="Update", font=("Helvetica", 12, "bold"), bg="#FFB900", fg="#263238", padx=10, pady=5, bd=0)   
     update_button.pack(side="left", padx=10, pady=10)
-    
     window.mainloop()
 
 
@@ -76,15 +87,15 @@ def package_file(file_path):
     return file_path
 
 def create_password_file():
-    password = getpass.getpass(prompt='Enter a password for admin mode: ')
-    confirm_password = getpass.getpass(prompt='Confirm the password: ')
+    password = getpass.getpass(prompt='Zadejte nové heslo pro admin pravomoce: ')
+    confirm_password = getpass.getpass(prompt='Potvrdit heslo: ')
     while password != confirm_password:
-        print('Passwords do not match. Please try again.')
-        password = getpass.getpass(prompt='Enter a password for admin mode: ')
-        confirm_password = getpass.getpass(prompt='Confirm the password: ')
+        print('Hesla se neschodují, zkuste to znovu.')
+        password = getpass.getpass(prompt='Zadejte nové heslo pro admin pravomoce ')
+        confirm_password = getpass.getpass(prompt='Potvrdit heslo: ')
     with open(PASSWORD_FILE_PATH, 'w') as f:
         f.write(password)
-    print(f'Password created successfully and saved to {PASSWORD_FILE_PATH}')
+    print(f'Heslo bylo vytvořeno')
 
 def check_admin_password():
     if not os.path.exists(PASSWORD_FILE_PATH):
@@ -93,37 +104,36 @@ def check_admin_password():
         with open(PASSWORD_FILE_PATH, 'r') as f:
             password = f.read().strip()
         if not password:
-            print('The password file is empty. Please create a password.')
+            print('Vytvořte heslo nové heslo pro admin pravomoce')
             create_password_file()
         else:
-            input_password = getpass.getpass(prompt='Enter the password for admin mode: ')
+            input_password = getpass.getpass(prompt='Zadejte admin heslo: ')
             while input_password != password:
-                print('Incorrect password. Please try again.')
-                input_password = getpass.getpass(prompt='Enter the password for admin mode: ')
+                print('Nesprávné heslo, zkuste to znovu')
+                input_password = getpass.getpass(prompt='Zadejte admin heslo: ')
 
-# Define command-line arguments
 parser = argparse.ArgumentParser()
 
-# Add admin mode argument
-parser.add_argument('-a', '--admin', action='store_true', help='Activate admin mode')
+# admin argument
+parser.add_argument('-a', '--admin', action='store_true', help='Zapnutí aplikace s admin pravomocemi')
 parser.add_argument('-e', '--repo-edit', action='store_true', help='repo dir')
 
-# Add command argument and sub-commands
 subparsers = parser.add_subparsers(title='commands', dest='command')
 
-add_parser = subparsers.add_parser('add', help='Add a new package')
-add_parser.add_argument('package', type=package_file, help='Package file to add')
+# Add argument
+add_parser = subparsers.add_parser('add', help='Přidání nového balíčku')
+add_parser.add_argument('package', type=package_file, help='Balíček pro přidání')
 
-# Add "del" sub-command
-del_parser = subparsers.add_parser('del', help='Delete an item')
-del_parser.add_argument('item', help='Item to delete')
+# Del argument
+del_parser = subparsers.add_parser('del', help='Vymazat balíček')
+del_parser.add_argument('item', help='Balíček pro vymazání')
 
-# Add "update" sub-command
-update_parser = subparsers.add_parser('update', help='Update an item')
-update_parser.add_argument('item', help='Item to update')
-update_parser.add_argument('new_value', help='New value for the item')
+# Update argument
+update_parser = subparsers.add_parser('update', help='Aktualizace balíčku')
+update_parser.add_argument('item', help='Balíček pro aktualizaci')
+update_parser.add_argument('new_value', help='Nová verze balíčku')
 
-# Parse command-line arguments
+
 args = parser.parse_args()
 
 
@@ -132,20 +142,20 @@ args = parser.parse_args()
 
 
 
-# Check if admin mode is activated
+
 if args.admin:
     check_admin_password()
-    print('Welcome to admin mode!')
+    print('admin mode')
 else:
     print('user mode')
 
-# Perform the requested command
+
 if args.command == 'add':
-    print(f'Adding {args.package}...')
+    print(f'Přidáno: {args.package}...')
     
 elif args.command == 'del':
-    print(f'Deleting {args.item}...')
+    print(f'vymazáno:  {args.item}...')
 elif args.command == 'update':
-    print(f'Updating {args.item} to {args.new_value}...')
+    print(f'Aktualizováno: {args.item} na {args.new_value}...')
 else:
     create_gui()
