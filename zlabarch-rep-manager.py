@@ -4,9 +4,11 @@ import argparse
 import os
 import getpass
 import base64
+from pathlib import Path 
 
 REPO_FILE_PATH = '/pokus/zlarch-repo'
 PASSWORD_FILE_PATH = '/etc/zlabarch-rep-manager/admin_password.txt'
+ASSETS_PATH = Path(__file__).resolve().parent / "assets"
 
 
 
@@ -77,6 +79,10 @@ def create_gui():
     del_button.pack(side="left", padx=10, pady=10)
     update_button = tk.Button(button_panel, text="Update", font=("Helvetica", 12, "bold"), bg="#FFB900", fg="#263238", padx=10, pady=5, bd=0)   
     update_button.pack(side="left", padx=10, pady=10)
+    
+    window.resizable(False, False)
+    logo = tk.PhotoImage(file=ASSETS_PATH / "repo-icon.png")
+    window.call('wm', 'iconphoto', window._w, logo) 
     window.mainloop()
 
 
