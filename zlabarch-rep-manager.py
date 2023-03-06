@@ -1,3 +1,4 @@
+import subprocess
 import tkinter as tk
 from tkinter import ttk
 import argparse
@@ -6,11 +7,33 @@ import getpass
 import base64
 from pathlib import Path 
 
-REPO_FILE_PATH = '/pokus/zlarch-repo'
+def load_assets():
+    print("")
+
+
+
+REPO_FILE_PATH = '/pokus/zlarch-repo/zlarch-repo.db.tar.xz'
+REPO_PATH = '/pokus/zlarch-repo/'
 PASSWORD_FILE_PATH = '/etc/zlabarch-rep-manager/admin_password.txt'
 ASSETS_PATH = Path(__file__).resolve().parent / "assets"
 
 
+def add_pkg(path):     #přidání balíčku do repozitare
+    try:                #funkce pouziva try a except
+        subprocess.run(["repo-add", REPO_FILE_PATH, path], check=True)    #použije shell pro vykonání akce skrz subprocess modul
+    except subprocess.CalledProcessError as e:
+        print(f"chyba: {e}")
+
+def del_pkg(package):   #Odebrání balíčku z repozitare
+    try:                #funkce pouziva try a except
+        subprocess.run(["repo-remove", REPO_FILE_PATH, package], check=True)    #použije shell pro vykonání akce skrz subprocess modul 
+    except subprocess.CalledProcessError as e:
+        print(f"chyba: {e}")
+
+def update_pkg(old_path, new_path):
+    print("")
+    
+    
 
 def list_pkg_files(path):
     pkg_files = []
@@ -122,7 +145,6 @@ parser = argparse.ArgumentParser()
 
 # admin argument
 parser.add_argument('-a', '--admin', action='store_true', help='Zapnutí aplikace s admin pravomocemi')
-parser.add_argument('-e', '--repo-edit', action='store_true', help='repo dir')
 
 subparsers = parser.add_subparsers(title='commands', dest='command')
 
@@ -140,7 +162,16 @@ update_parser.add_argument('item', help='Balíček pro aktualizaci')
 update_parser.add_argument('new_value', help='Nová verze balíčku')
 
 
+#změna repozitare
+changerepodir_parser = subparsers.add_parser('change-repo-dir', help='Změna repozitáře pro balíčky')
+changerepodir_parser.add_argument('item', help='Výběr repozitáře, zvolte repozitář ve formátu .db.tar.xz')
+
 args = parser.parse_args()
+
+
+
+
+
 
 
 
@@ -157,10 +188,9 @@ else:
 
 
 if args.command == 'add':
-    print(f'Přidáno: {args.package}...')
-    
+    add_pkg(args.package)   
 elif args.command == 'del':
-    print(f'vymazáno:  {args.item}...')
+    del_pkg(args.item)
 elif args.command == 'update':
     print(f'Aktualizováno: {args.item} na {args.new_value}...')
 else:
