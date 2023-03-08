@@ -12,7 +12,7 @@ def load_assets():
 
 
 
-REPO_FILE_PATH = '/pokus/zlarch-repo/zlarch-repo.db.tar.xz'
+REPO_FILE_PATH = '/pokus/zlarch-repo/'
 REPO_PATH = '/pokus/zlarch-repo/'
 PASSWORD_FILE_PATH = '/etc/zlabarch-rep-manager/admin_password.txt'
 ASSETS_PATH = Path(__file__).resolve().parent / "assets"
@@ -21,14 +21,14 @@ ASSETS_PATH = Path(__file__).resolve().parent / "assets"
 def add_pkg(path):     #přidání balíčku do repozitare
     try:                #funkce pouziva try a except
         subprocess.run(["repo-add", REPO_FILE_PATH, path], check=True)    #použije shell pro vykonání akce skrz subprocess modul
-    except subprocess.CalledProcessError as e:
-        print(f"chyba: {e}")
+    except subprocess.CalledProcessError as err:
+        print(f"chyba: {err}")
 
 def del_pkg(package):   #Odebrání balíčku z repozitare
     try:                #funkce pouziva try a except
         subprocess.run(["repo-remove", REPO_FILE_PATH, package], check=True)    #použije shell pro vykonání akce skrz subprocess modul 
-    except subprocess.CalledProcessError as e:
-        print(f"chyba: {e}")
+    except subprocess.CalledProcessError as err:
+        print(f"chyba: {err}")
 
 def update_pkg(old_path, new_path):
     print("")
@@ -42,6 +42,16 @@ def list_pkg_files(path):
             base_filename = os.path.splitext(filename)[0]
             pkg_files.append(base_filename)
     return pkg_files
+
+
+def select_path():
+    global output_path
+
+    output_path = tk.filedialog.askdirectory()
+    path_entry.delete(0, tk.END)
+    path_entry.insert(0, output_path)
+
+
 
 def create_gui():
     gui = True
@@ -73,8 +83,12 @@ def create_gui():
         
     
     # middle panel
+    panelbackground = tk.PhotoImage(file=ASSETS_PATH / "background.png")
     middle_panel = tk.Frame(window, bg="#CFD8DC")
     middle_panel.pack(side="top", fill="both", expand=True)
+    background_label = tk.Label(middle_panel, image=panelbackground)
+    background_label.place(x=0, y=0, relwidth=1, relheight=1)
+    
     
     # listbox pro unchecked 
     unchecked_label = tk.Label(middle_panel, text="Unchecked Packages", font=("Helvetica", 12, "bold"), bg="#CFD8DC")
@@ -102,7 +116,7 @@ def create_gui():
     del_button.pack(side="left", padx=10, pady=10)
     update_button = tk.Button(button_panel, text="Update", font=("Helvetica", 12, "bold"), bg="#FFB900", fg="#263238", padx=10, pady=5, bd=0)   
     update_button.pack(side="left", padx=10, pady=10)
-    
+    window.geometry("800x600")
     window.resizable(False, False)
     logo = tk.PhotoImage(file=ASSETS_PATH / "repo-icon.png")
     window.call('wm', 'iconphoto', window._w, logo) 
