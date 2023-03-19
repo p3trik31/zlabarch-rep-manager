@@ -5,7 +5,8 @@ import argparse
 import os
 import getpass
 import base64
-from pathlib import Path 
+from pathlib import Path
+import keyring
 
 def load_assets():
     print("")
@@ -14,8 +15,7 @@ def load_assets():
 
 REPO_FILE_PATH = '/pokus/zlarch-repo/'
 REPO_PATH = '/pokus/zlarch-repo/'
-PASSWORD_FILE_PATH = '/etc/zlabarch-rep-manager/admin_password.txt'
-ASSETS_PATH = Path(__file__).resolve().parent / "assets"
+ASSETS_PATH = Path(__file__).resolve().parent / "assets" #ikona a pozadi aplikace 
 
 
 def add_pkg(path):     #přidání balíčku do repozitare
@@ -48,8 +48,8 @@ def select_path():
     global output_path
 
     output_path = tk.filedialog.askdirectory()
-    path_entry.delete(0, tk.END)
-    path_entry.insert(0, output_path)
+   # path_entry.delete(0, tk.END)
+   # path_entry.insert(0, output_path)
 
 
 
@@ -114,8 +114,8 @@ def create_gui():
     add_button.pack(side="left", padx=10, pady=10)
     del_button = tk.Button(button_panel, text="Del", font=("Helvetica", 12, "bold"), bg="#FF7043", fg="#263238", padx=10, pady=5, bd=0)
     del_button.pack(side="left", padx=10, pady=10)
-    update_button = tk.Button(button_panel, text="Update", font=("Helvetica", 12, "bold"), bg="#FFB900", fg="#263238", padx=10, pady=5, bd=0)   
-    update_button.pack(side="left", padx=10, pady=10)
+#    update_button = tk.Button(button_panel, text="Update", font=("Helvetica", 12, "bold"), bg="#FFB900", fg="#263238", padx=10, pady=5, bd=0)   
+#    update_button.pack(side="left", padx=10, pady=10)
     window.geometry("800x600")
     window.resizable(False, False)
     logo = tk.PhotoImage(file=ASSETS_PATH / "repo-icon.png")
@@ -124,36 +124,56 @@ def create_gui():
 
 
 
-def package_file(file_path):
+def package_file(file_path): 
     if not file_path.endswith('.pkg.tar.zst'):
         raise argparse.ArgumentTypeError('Balíček musí být ve formátu.pkg.tar.zst')
     return file_path
 
-def create_password_file():
+
+
+PASSWORD_KEY = 'zlabarch-rep-manager-KEY' #identifikator klice
+
+def create_password():            #vytvoreni administratorskeho hesla pomoci python keyring
     password = getpass.getpass(prompt='Zadejte nové heslo pro admin pravomoce: ')
     confirm_password = getpass.getpass(prompt='Potvrdit heslo: ')
     while password != confirm_password:
         print('Hesla se neschodují, zkuste to znovu.')
         password = getpass.getpass(prompt='Zadejte nové heslo pro admin pravomoce ')
         confirm_password = getpass.getpass(prompt='Potvrdit heslo: ')
-    with open(PASSWORD_FILE_PATH, 'w') as f:
-        f.write(password)
+    keyring.set_password('system', PASSWORD_KEY, password)
     print(f'Heslo bylo vytvořeno')
 
 def check_admin_password():
-    if not os.path.exists(PASSWORD_FILE_PATH):
-        create_password_file()
+    password = keyring.get_password('system', PASSWORD_KEY)
+    if not password:
+        create_password()
     else:
-        with open(PASSWORD_FILE_PATH, 'r') as f:
-            password = f.read().strip()
-        if not password:
-            print('Vytvořte heslo nové heslo pro admin pravomoce')
-            create_password_file()
-        else:
+        input_password = getpass.getpass(prompt='Zadejte admin heslo: ')
+        while input_password != password:
+            print('Nesprávné heslo, zkuste to znovu')
             input_password = getpass.getpass(prompt='Zadejte admin heslo: ')
-            while input_password != password:
-                print('Nesprávné heslo, zkuste to znovu')
-                input_password = getpass.getpass(prompt='Zadejte admin heslo: ')
+
+def change_password():
+    current_password = keyring.get_password('system', PASSWORD_KEY)
+    if not current_password:                #pokud heslo neexistuje, tak se zepta uzivatele na nove
+        create_password()
+    else:
+        input_password = getpass.getpass(prompt='Zadejte současné admin heslo: ')
+        while input_password != current_password:
+            print('Nesprávné heslo, zkuste to znovu')
+            input_password = getpass.getpass(prompt='Zadejte současné admin heslo: ')
+
+        new_password = getpass.getpass(prompt='Zadejte nové heslo pro admin pravomoce: ')
+        confirm_password = getpass.getpass(prompt='Potvrdit heslo: ')
+        while new_password != confirm_password:
+            print('Hesla se neschodují, zkuste to znovu.')
+            new_password = getpass.getpass(prompt='Zadejte nové heslo pro admin pravomoce ')
+            confirm_password = getpass.getpass(prompt='Potvrdit heslo: ')
+        
+        keyring.set_password('system', PASSWORD_KEY, new_password)
+        print(f'Heslo bylo změněno.')
+
+
 
 parser = argparse.ArgumentParser()
 
@@ -180,13 +200,12 @@ update_parser.add_argument('new_value', help='Nová verze balíčku')
 changerepodir_parser = subparsers.add_parser('change-repo-dir', help='Změna repozitáře pro balíčky')
 changerepodir_parser.add_argument('item', help='Výběr repozitáře, zvolte repozitář ve formátu .db.tar.xz')
 
+
+change_password_parser = subparsers.add_parser('change-password', help='Změna administrátorského hesla')
+
+
+
 args = parser.parse_args()
-
-
-
-
-
-
 
 
 
@@ -207,5 +226,9 @@ elif args.command == 'del':
     del_pkg(args.item)
 elif args.command == 'update':
     print(f'Aktualizováno: {args.item} na {args.new_value}...')
+elif args.command =='change-password':
+    change_password()
+elif args.command =='change-repo-dir':
+    print(" ")
 else:
     create_gui()
