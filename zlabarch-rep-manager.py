@@ -1,6 +1,7 @@
 import subprocess
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog
 import argparse
 import os
 import getpass
@@ -8,34 +9,47 @@ import base64
 from pathlib import Path
 import keyring
 
-def load_assets():
-    print("")
+
+with open('/etc/zlabarch-rep-manager/repo.txt', 'r') as f:          #nacteni souboru repozitare
+    REPO_FILE_PATH = f.read().strip()
+
+REPO_FOLDER_PATH = os.path.dirname(REPO_FILE_PATH)                  #cesta k souboru repozitare
 
 
-
-REPO_FILE_PATH = '/pokus/zlarch-repo/'
-REPO_PATH = '/pokus/zlarch-repo/'
+UNCHECKED_ACTIONS = '/etc/zlabarch-rep-manager/actions.txt'
 ASSETS_PATH = Path(__file__).resolve().parent / "assets" #ikona a pozadi aplikace 
 
 
-def add_pkg(path):     #přidání balíčku do repozitare
-    try:                #funkce pouziva try a except
-        subprocess.run(["repo-add", REPO_FILE_PATH, path], check=True)    #použije shell pro vykonání akce skrz subprocess modul
+adminmode = False
+
+
+def add_pkg(path):  # přidání balíčku do repozitare
+    try:  # funkce pouziva try a except
+        command = ["repo-add", REPO_FILE_PATH, path]
+        if adminmode == True:
+            subprocess.run(command, check=True)  # použije shell pro vykonání akce skrz subprocess modul
+        else:
+            with open(UNCHECKED_ACTIONS, 'a') as f:
+                f.write(' '.join(command)+ '\n')
     except subprocess.CalledProcessError as err:
         print(f"chyba: {err}")
+
 
 def del_pkg(package):   #Odebrání balíčku z repozitare
     try:                #funkce pouziva try a except
-        subprocess.run(["repo-remove", REPO_FILE_PATH, package], check=True)    #použije shell pro vykonání akce skrz subprocess modul 
+        command = ["repo-remove", REPO_FILE_PATH, package]
+        if adminmode == True:
+            subprocess.run(command, check=True)    #použije shell pro vykonání akce skrz subprocess modul 
+        else:
+            with open(UNCHECKED_ACTIONS, 'a') as f:
+                f.write(' '.join(command)+ '\n')
     except subprocess.CalledProcessError as err:
         print(f"chyba: {err}")
 
-def update_pkg(old_path, new_path):
-    print("")
-    
-    
 
-def list_pkg_files(path):
+
+
+def list_pkg_files(path):    #vypis balicku 
     pkg_files = []
     for filename in os.listdir(path):
         if filename.endswith(".pkg.tar.zst"):
@@ -44,12 +58,20 @@ def list_pkg_files(path):
     return pkg_files
 
 
+def list_unchecked_actions(path):  #vypis neschvalenych akci
+    with open(path, 'r') as f:
+        lines = f.readlines()
+    return lines
+
+
 def select_path():
     global output_path
+    filetypes = (("Package files", "*.pkg.tar.zst"), ("All files", "*.*"))
+    output_path = tk.filedialog.askopenfilename(filetypes=filetypes)
+    add_pkg(output_path)
+    create_gui()
+    
 
-    output_path = tk.filedialog.askdirectory()
-   # path_entry.delete(0, tk.END)
-   # path_entry.insert(0, output_path)
 
 
 
@@ -96,13 +118,20 @@ def create_gui():
     unchecked_listbox = tk.Listbox(middle_panel, selectmode="multiple", bg="white", fg="#263238", font=("Helvetica", 12))
     unchecked_listbox.pack(side="left", fill="both", expand=True, padx=10, pady=10)
     
+
+
+    actions = list_unchecked_actions(UNCHECKED_ACTIONS)
+    for action in actions:
+        unchecked_listbox.insert(tk.END, action)
+    
+    
     # listbox pro balicky
     packages_label = tk.Label(middle_panel, text="Packages", font=("Helvetica", 12, "bold"), bg="#CFD8DC")
     packages_label.pack(side="left", padx=10, pady=10)
     packages_listbox = tk.Listbox(middle_panel, selectmode="multiple", bg="white", fg="#263238", font=("Helvetica", 12))
     packages_listbox.pack(side="left", fill="both", expand=True, padx=10, pady=10)
     
-    pkg_files = list_pkg_files(REPO_FILE_PATH)
+    pkg_files = list_pkg_files(REPO_FOLDER_PATH)
     for filename in pkg_files:
         packages_listbox.insert(tk.END, filename)
     
@@ -110,17 +139,17 @@ def create_gui():
     # button panel pro hlavni akce
     button_panel = tk.Frame(window, bg="#263238", height=50)
     button_panel.pack(side="top", fill="x")
-    add_button = tk.Button(button_panel, text="Add", font=("Helvetica", 12, "bold"), bg="#4CAF50", fg="white", padx=10, pady=5, bd=0)
+    add_button = tk.Button(button_panel, text="Add", font=("Helvetica", 12, "bold"), bg="#4CAF50", fg="white", padx=10, pady=5, bd=0, command=select_path) 
     add_button.pack(side="left", padx=10, pady=10)
     del_button = tk.Button(button_panel, text="Del", font=("Helvetica", 12, "bold"), bg="#FF7043", fg="#263238", padx=10, pady=5, bd=0)
     del_button.pack(side="left", padx=10, pady=10)
-#    update_button = tk.Button(button_panel, text="Update", font=("Helvetica", 12, "bold"), bg="#FFB900", fg="#263238", padx=10, pady=5, bd=0)   
-#    update_button.pack(side="left", padx=10, pady=10)
     window.geometry("800x600")
     window.resizable(False, False)
     logo = tk.PhotoImage(file=ASSETS_PATH / "repo-icon.png")
     window.call('wm', 'iconphoto', window._w, logo) 
     window.mainloop()
+    
+
 
 
 
@@ -213,11 +242,16 @@ args = parser.parse_args()
 
 
 
-if args.admin:
+if args.admin:          #v jakem modu se pusti aplikace
+    if os.getuid() != 0:
+        print("Aplikace potřebuje root pravomoce pro spuštění")
+        exit(1)
+
+     
     check_admin_password()
-    print('admin mode')
+    adminmode = True
 else:
-    print('user mode')
+    adminmode = False
 
 
 if args.command == 'add':
