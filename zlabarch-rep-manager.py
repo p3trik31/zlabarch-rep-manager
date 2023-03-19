@@ -72,6 +72,8 @@ def select_path():
     create_gui()
     
 
+    
+
 
 
 
@@ -136,12 +138,20 @@ def create_gui():
         packages_listbox.insert(tk.END, filename)
     
     
+    def del_package():
+        selected = packages_listbox.curselection()
+        if len(selected) > 0:
+               for index in selected:
+                  del_pkg(index)
+    
+    
+    
     # button panel pro hlavni akce
     button_panel = tk.Frame(window, bg="#263238", height=50)
     button_panel.pack(side="top", fill="x")
     add_button = tk.Button(button_panel, text="Add", font=("Helvetica", 12, "bold"), bg="#4CAF50", fg="white", padx=10, pady=5, bd=0, command=select_path) 
     add_button.pack(side="left", padx=10, pady=10)
-    del_button = tk.Button(button_panel, text="Del", font=("Helvetica", 12, "bold"), bg="#FF7043", fg="#263238", padx=10, pady=5, bd=0)
+    del_button = tk.Button(button_panel, text="Del", font=("Helvetica", 12, "bold"), bg="#FF7043", fg="#263238", padx=10, pady=5, bd=0, command=del_package)
     del_button.pack(side="left", padx=10, pady=10)
     window.geometry("800x600")
     window.resizable(False, False)
@@ -174,7 +184,7 @@ def create_password():            #vytvoreni administratorskeho hesla pomoci pyt
 
 def check_admin_password():
     password = keyring.get_password('system', PASSWORD_KEY)
-    if not password:
+    if not password:            #pokud heslo neexistuje, tak se zepta uzivatele na nove
         create_password()
     else:
         input_password = getpass.getpass(prompt='Zadejte admin heslo: ')
