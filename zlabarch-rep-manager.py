@@ -10,6 +10,26 @@ from pathlib import Path
 import keyring
 
 
+def read_repo_file():
+    
+    
+    REPO_FILE_PATH = '/etc/zlabarch-rep-manager/repo.txt'
+    UNCHECKED_ACTIONS = '/etc/zlabarch-rep-manager/actions.txt'
+    REPO_DIR_PATH = '/etc/zlabarch-rep-manager/'
+    
+    if not os.path.exists(REPO_FILE_PATH):
+        os.makedirs(REPO_DIR_PATH)
+        with open(REPO_FILE_PATH, 'w'):
+            pass  # vytvoreni dokumentu pro cestu k repozitari
+        
+    if not os.path.exists(UNCHECKED_ACTIONS):
+        os.makedirs(REPO_DIR_PATH)
+        with open(UNCHECKED_ACTIONS, 'w'):
+            pass  # vytvoreni dokumentu pro cestu k repozitari
+
+read_repo_file()
+
+
 with open('/etc/zlabarch-rep-manager/repo.txt', 'r') as f:          #nacteni souboru repozitare
     REPO_FILE_PATH = f.read().strip()
 
@@ -119,12 +139,44 @@ def create_gui():
     unchecked_label.pack(side="left", padx=10, pady=10)
     unchecked_listbox = tk.Listbox(middle_panel, selectmode="multiple", bg="white", fg="#263238", font=("Helvetica", 12))
     unchecked_listbox.pack(side="left", fill="both", expand=True, padx=10, pady=10)
-    
+    #unchecked_listbox.bind("<Double-Button-1>", decide)
+
 
 
     actions = list_unchecked_actions(UNCHECKED_ACTIONS)
     for action in actions:
         unchecked_listbox.insert(tk.END, action)
+    
+    
+ 
+
+    def decide(event):
+        selection = event.widget.curselection()
+        if selection:
+            selected_item = event.widget.get(selection[0])
+            decision_dialog = tk.Toplevel()
+            decision_dialog.title("Co chcete s touto akcí udělat?")
+            decision_dialog.geometry("300x100")
+            decision_label = tk.Label(decision_dialog, text=f"Chcete provést akci '{selected_item}'?", font=("Helvetica", 12))
+            decision_label.pack(side="top", padx=10, pady=10)
+            accept_button = tk.Button(decision_dialog, text="Přijmout", command=lambda: accept_action(selected_item))
+            accept_button.pack(side="left", padx=10, pady=10)
+            reject_button = tk.Button(decision_dialog, text="Odmítnout", command=lambda: reject_action(selected_item))
+            reject_button.pack(side="right", padx=10, pady=10)
+
+    def accept_action(action):
+        subprocess.run(action, shell=True)
+
+    def reject_action(action):
+        actions_file = "/etc/zlabarch-package-manager/actions.txt"
+        with open(actions_file, "r") as f:
+            lines = f.readlines()
+        with open(actions_file, "w") as f:
+            for line in lines:
+                if action not in line:
+                    f.write(line)
+        unchecked_listbox.delete(tk.ANCHOR)
+
     
     
     # listbox pro balicky
@@ -273,6 +325,12 @@ elif args.command == 'update':
 elif args.command =='change-password':
     change_password()
 elif args.command =='change-repo-dir':
-    print(" ")
+    if adminmode == True:
+        REPO_FILE_PATH = '/etc/zlabarch-rep-manager/repo.txt'
+        repo_path = input("Enter the path to the repository: ")   
+        with open(REPO_FILE_PATH, 'w') as f:
+            f.write(repo_path)
+    else:
+        exit(1)
 else:
     create_gui()
